@@ -104,7 +104,7 @@
  * 100 is the smallest file size (but takes longer), and 0 is the largest
  * file size (but compresses quickly).
  */
-#define GUAC_SURFACE_LOSSLESS_WEBP_COMPRESSION_QUALITY 90
+#define GUAC_SURFACE_LOSSLESS_WEBP_COMPRESSION_QUALITY 70
 
 /**
  * Updates the coordinates of the given rectangle to be within the bounds of
