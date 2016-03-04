@@ -338,6 +338,59 @@ ssize_t guac_socket_write_base64(guac_socket* socket, const void* buf, size_t co
 
 }
 
+ssize_t guac_socket_write_7bit(guac_socket* socket, const void* buf,
+        size_t count) {
+
+    int i;
+    unsigned char* current;
+    unsigned char output_byte;
+
+    /* Final output buffer (bytes) */
+    char output_byte_buffer[8192];
+    int output_byte_length = 0;
+
+    /* Rolling buffer (bits, will contain no more than 15 bits at any time) */
+    unsigned int output_bit_buffer = 0;
+    int output_bit_length = 0;
+
+    /* Verify that space exists for given buffer */
+    int required_byte_length = ((count * 8) + 6) / 7;
+    if (required_byte_length > sizeof(output_byte_buffer))
+        return -1;
+
+    /* Add each byte within the buffer as a new 7-bit quantity + extra bits */
+    current = (unsigned char*) buf;
+    for (i = 0; i < count; i++) {
+
+        /* Shift on new byte to bit buffer */
+        output_bit_buffer = (output_bit_buffer << 8) | *(current++);
+        output_bit_length += 8;
+
+        /* Shift off 7 bits until more bits are needed */
+        while (output_bit_length >= 7) {
+
+            /* Pull leftmost seven bits */
+            output_bit_length -= 7;
+            output_byte = (output_bit_buffer >> output_bit_length) & 0x7F;
+
+            /* Add to output buffer as one byte */
+            output_byte_buffer[output_byte_length++] = output_byte;
+
+        }
+
+    }
+
+    /* If any bits remain, write as the final byte */
+    if (output_bit_length != 0) {
+        output_byte = (output_bit_buffer << (7 - output_bit_length)) & 0x7F;
+        output_byte_buffer[output_byte_length++] = output_byte;
+    }
+
+    /* Write converted buffer to socket */
+    return guac_socket_write(socket, output_byte_buffer, output_byte_length);
+
+}
+
 ssize_t guac_socket_flush(guac_socket* socket) {
 
     /* If handler defined, call it. */

@@ -173,7 +173,7 @@ int guac_protocol_send_audio(guac_socket* socket, const guac_stream* stream,
 int guac_protocol_send_blob(guac_socket* socket, const guac_stream* stream,
         const void* data, int count) {
 
-    int base64_length = (count + 2) / 3 * 4;
+    int encoded_length = ((count * 8) + 6) / 7;
 
     int ret_val;
 
@@ -182,10 +182,9 @@ int guac_protocol_send_blob(guac_socket* socket, const guac_stream* stream,
            guac_socket_write_string(socket, "4.blob,")
         || __guac_socket_write_length_int(socket, stream->index)
         || guac_socket_write_string(socket, ",")
-        || guac_socket_write_int(socket, base64_length)
+        || guac_socket_write_int(socket, encoded_length)
         || guac_socket_write_string(socket, ".")
-        || guac_socket_write_base64(socket, data, count)
-        || guac_socket_flush_base64(socket)
+        || guac_socket_write_7bit(socket, data, count)
         || guac_socket_write_string(socket, ";");
 
     guac_socket_instruction_end(socket);

@@ -238,6 +238,30 @@ ssize_t guac_socket_write_string(guac_socket* socket, const char* str);
 ssize_t guac_socket_write_base64(guac_socket* socket, const void* buf, size_t count);
 
 /**
+ * Writes the given binary data to the given guac_socket object encoded as one
+ * byte for every 7-bits, mapping the given data onto the first 128 codepoints
+ * of UTF-8. While base64 has an expansion ratio of 3:4, this has an expansion
+ * ratio of 7:8.
+ *
+ * If an error occurs while writing, a non-zero value is returned, and
+ * guac_error is set appropriately.
+ *
+ * @param socket
+ *     The guac_socket object to write to.
+ *
+ * @param buf
+ *     A buffer containing the data to write.
+ *
+ * @param count
+ *     The number of bytes to write.
+ *
+ * @return
+ *     Zero on success, or non-zero if an error occurs while writing.
+ */
+ssize_t guac_socket_write_7bit(guac_socket* socket, const void* buf,
+        size_t count);
+
+/**
  * Writes the given data to the specified socket. The data written may be
  * buffered until the buffer is flushed automatically or manually.
  *
