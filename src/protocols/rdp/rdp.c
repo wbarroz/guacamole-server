@@ -225,6 +225,7 @@ BOOL rdp_freerdp_pre_connect(freerdp* instance) {
             (pChannelConnectedEventHandler) guac_rdp_channel_connected);
 #endif
 
+#ifdef HAVE_FREERDP_DISPLAY_UPDATE_SUPPORT
     /* Load virtual channel management plugin */
     if (freerdp_channels_load_plugin(channels, instance->settings,
                 "drdynvc", instance->settings))
@@ -234,6 +235,7 @@ BOOL rdp_freerdp_pre_connect(freerdp* instance) {
     /* Init display update plugin (if available and required) */
     if (settings->resize_method == GUAC_RESIZE_DISPLAY_UPDATE)
         guac_rdp_disp_load_plugin(instance->context);
+#endif
 
     /* Load clipboard plugin */
     if (freerdp_channels_load_plugin(channels, instance->settings,
