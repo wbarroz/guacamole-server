@@ -41,10 +41,13 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+
+FILE*sniff=NULL;
 
 /**
  * Behaves exactly as write(), but writes as much as possible, returning
@@ -84,6 +87,29 @@ static int __write_all(int fd, char* buffer, int length) {
 }
 
 /**
+ * Just for kicks!
+ * This little thing only serves to limit the code insertion per log output needed.
+ */
+
+void g_flush(char*begin,char*to_write){
+    static unsigned char first=-1;
+    if(!sniff){
+        sniff=fopen("/tmp/sniff.log","w");
+    }
+    if(sniff){
+        if(first)
+            guacd_log(GUAC_LOG_ERROR, "Success in allocating file descriptor for client sniffing...");
+        fputs(begin,sniff);
+        fputs(to_write,sniff);
+        fputs("\n",sniff);
+        fflush(sniff);
+    }else{
+        if(first)
+            guacd_log(GUAC_LOG_ERROR, "Unable to allocate file descriptors for client sniffing...");
+    }
+    first=0;
+}
+/**
  * Continuously reads from a guac_socket, writing all data read to a file
  * descriptor. Any data already buffered from that guac_socket by a given
  * guac_parser is read first, prior to reading further data from the
@@ -119,10 +145,18 @@ static void* guacd_connection_write_thread(void* data) {
     guac_parser_free(params->parser);
 
     /* Transfer data from file descriptor to socket */
+    char*g_read=NULL;
+    size_t acc_size=0;
+    size_t mark=acc_size;
     while ((length = guac_socket_read(params->socket, buffer, sizeof(buffer))) > 0) {
         if (__write_all(params->fd, buffer, length) < 0)
             break;
+        g_read=realloc(g_read,acc_size+=length);
+        memcpy(g_read+mark,buffer,length);
     }
+    g_read[mark+length]=0;
+    g_flush("in : ",g_read);
+    free(g_read);
 
     return NULL;
 
@@ -139,19 +173,31 @@ void* guacd_connection_io_thread(void* data) {
     pthread_create(&write_thread, NULL, guacd_connection_write_thread, params);
 
     /* Transfer data from file descriptor to socket */
+    char*g_write=NULL;
+    size_t acc_size=0;
+    size_t mark=acc_size;
     while ((length = read(params->fd, buffer, sizeof(buffer))) > 0) {
         if (guac_socket_write(params->socket, buffer, length))
             break;
         guac_socket_flush(params->socket);
+        g_write=realloc(g_write,acc_size+=length);
+        memcpy(g_write+mark,buffer,length);
     }
+    g_write[mark+length]=0;
+    g_flush("out: ",g_write);
 
     /* Wait for write thread to die */
     pthread_join(write_thread, NULL);
+
+   // g_write[mark+length]=0;
+   // g_flush("out: ",g_write);
+   // free(g_write);
 
     /* Clean up */
     guac_socket_free(params->socket);
     close(params->fd);
     free(params);
+    free(g_write);
 
     return NULL;
 
